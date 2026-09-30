@@ -1,0 +1,15 @@
+# Resenha FC no Render: site estático no plano grátis.
+# Não tem nada pra montar, o Render só publica os arquivos desta pasta.
+services:
+  - type: web
+    runtime: static
+    name: resenha-fc
+    buildCommand: echo "Nada pra montar, é só HTML"
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Cache-Control
+        value: no-cache

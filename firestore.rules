@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Troque pelo seu e-mail do Google (o mesmo de ownerEmail no index.html)
+    function ownerEmail() { return "gfracalossi2018@gmail.com"; }
+
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() == ownerEmail().lower();
+    }
+    function isAdmin() {
+      return isOwner() || (signedIn()
+        && exists(/databases/$(database)/documents/config/admins)
+        && request.auth.uid in get(/databases/$(database)/documents/config/admins).data.ids);
+    }
+
+    // Perfil e respostas de cada jogador: cada um mexe só no seu
+    match /members/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.nick is string
+        && request.resource.data.nick.size() <= 40;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Foto de cada jogador: cada um mexe só na sua
+    match /photos/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.src is string
+        && request.resource.data.src.size() < 250000;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Jogos (quadra, avulsos, sorteio, pagamento e placar): só adm mexe
+    match /games/{day} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Configuração (dia fixo e lista de adm): só o dono mexe
+    match /config/{doc} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
+  }
+}
